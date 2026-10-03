@@ -1,0 +1,257 @@
+ <!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Your Risk Analysis — Lifestyle AI</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+<body>
+
+<!-- ── Navigation ─────────────────────────────────────────────────────────── -->
+<nav class="navbar" id="navbar">
+  <div class="nav-container">
+    <a href="/" class="nav-logo">
+      <i class="fas fa-brain"></i> Lifestyle AI
+    </a>
+    <button class="nav-toggle" id="navToggle" aria-label="Toggle navigation">
+      <i class="fas fa-bars"></i>
+    </button>
+    <ul class="nav-links" id="navLinks">
+      <li><a href="/" class="nav-link"><i class="fas fa-home"></i> Home</a></li>
+      <li><a href="/#analyze-section" class="nav-link"><i class="fas fa-flask"></i> Analyze</a></li>
+      <li><a href="/dashboard" class="nav-link"><i class="fas fa-chart-bar"></i> Dashboard</a></li>
+      <li><a href="/#insights-section" class="nav-link"><i class="fas fa-lightbulb"></i> Insights</a></li>
+      <li><a href="/#about-section" class="nav-link"><i class="fas fa-info-circle"></i> About</a></li>
+    </ul>
+    <div class="nav-actions">
+      <button class="theme-toggle" id="themeToggle" aria-label="Toggle dark mode" title="Toggle Dark Mode">
+        <i class="fas fa-moon" id="themeIcon"></i>
+      </button>
+    </div>
+  </div>
+</nav>
+
+<!-- ── Inject result data for JavaScript ──────────────────────────────────── -->
+<script>
+  window.__RESULT_DATA__ = {{ result | tojson | safe }};
+</script>
+
+<!-- ── Result Page ────────────────────────────────────────────────────────── -->
+<main class="result-page">
+
+  <!-- Disclaimer banner -->
+  <div style="background:rgba(99,102,241,0.06);border-bottom:1px solid rgba(99,102,241,0.15);padding:10px 24px;text-align:center;font-size:0.8rem;color:var(--text-muted);">
+    <i class="fas fa-shield-alt" style="color:var(--primary);margin-right:6px;"></i>
+    This tool is an educational wellness analytics project and is not a medical or psychological diagnostic tool.
+  </div>
+
+  <!-- ── Risk Score Hero ─────────────────────────────────────────────────── -->
+  <section class="result-hero">
+    <h1 style="font-size:1.6rem;font-weight:800;margin-bottom:28px;letter-spacing:-0.02em;">
+      <i class="fas fa-chart-pie" style="color:var(--primary);margin-right:8px;"></i>
+      Your Daily Risk Analysis
+    </h1>
+
+    <!-- Circular gauge -->
+    <div class="risk-circle-container">
+      <div class="risk-circle" role="img" aria-label="Risk score {{ result.risk_score }} out of 100">
+        <svg viewBox="0 0 200 200">
+          <circle class="risk-circle-bg" cx="100" cy="100" r="90"/>
+          <circle class="risk-circle-fg" cx="100" cy="100" r="90"
+                  style="stroke:{{ result.color }};"/>
+        </svg>
+        <div class="risk-center">
+          <span class="risk-score-num" style="color:{{ result.color }};">0</span>
+          <span class="risk-score-label">out of 100</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Risk level badge -->
+    <div style="margin-bottom:14px;">
+      <span class="risk-level-badge
+        {% if result.risk_score < 35 %}badge-low{% elif result.risk_score < 65 %}badge-moderate{% else %}badge-high{% endif %}"
+        aria-label="Risk level: {{ result.risk_level }}">
+        {{ result.risk_level }}
+      </span>
+    </div>
+
+    <p class="risk-description">{{ result.description }}</p>
+  </section>
+
+  <!-- ── Main Result Grid ────────────────────────────────────────────────── -->
+  <div class="result-grid container">
+
+    <!-- Personalized Insights -->
+    <div class="result-card">
+      <h3><i class="fas fa-lightbulb"></i> Your Lifestyle Insights</h3>
+      {% if result.insights %}
+        <div class="insights-list">
+          {% for insight in result.insights %}
+          <div class="insight-item type-{{ insight.type }}"
+               role="listitem"
+               aria-label="{{ insight.title }}: {{ insight.message }}">
+            <div class="insight-icon">{{ insight.icon }}</div>
+            <div>
+              <div class="insight-title">{{ insight.title }}</div>
+              <div class="insight-msg">{{ insight.message }}</div>
+            </div>
+          </div>
+          {% endfor %}
+        </div>
+      {% else %}
+        <p style="color:var(--text-muted);font-size:0.9rem;">No specific insights generated.</p>
+      {% endif %}
+    </div>
+
+    <!-- Risk Breakdown Progress Bars -->
+    <div class="result-card">
+      <h3><i class="fas fa-sliders-h"></i> Lifestyle Risk Breakdown</h3>
+      {% if result.factors %}
+        <div class="factor-bars">
+          {% for name, pct in result.factors.items() %}
+          <div class="factor-row">
+            <div class="factor-label-row">
+              <span>{{ name }}</span>
+              <span class="factor-pct">{{ pct }}%</span>
+            </div>
+            <div class="factor-bar-track" role="progressbar" aria-valuenow="{{ pct }}" aria-valuemin="0" aria-valuemax="100">
+              <div class="factor-bar-fill" data-pct="{{ pct }}"></div>
+            </div>
+          </div>
+          {% endfor %}
+        </div>
+      {% endif %}
+    </div>
+
+    <!-- Radar Chart -->
+    <div class="result-card">
+      <h3><i class="fas fa-spider"></i> Lifestyle Overview Radar</h3>
+      <div class="chart-wrapper" style="height:280px;display:flex;align-items:center;justify-content:center;">
+        <canvas id="radarChart" aria-label="Radar chart of lifestyle factors"></canvas>
+      </div>
+    </div>
+
+    <!-- Gauge Chart -->
+    <div class="result-card" style="display:flex;flex-direction:column;align-items:center;">
+      <h3 style="align-self:flex-start;"><i class="fas fa-tachometer-alt"></i> Risk Gauge</h3>
+      <div class="chart-wrapper" style="max-width:260px;width:100%;position:relative;">
+        <canvas id="gaugeChart" aria-label="Doughnut gauge showing risk score {{ result.risk_score }}"></canvas>
+        <div style="position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;pointer-events:none;">
+          <span style="font-size:2rem;font-weight:900;color:{{ result.color }};">{{ result.risk_score }}</span>
+          <span style="font-size:0.75rem;color:var(--text-muted);font-weight:600;">RISK SCORE</span>
+        </div>
+      </div>
+      <!-- Risk level legend -->
+      <div style="margin-top:20px;display:flex;gap:16px;font-size:0.78rem;font-weight:600;">
+        <span style="color:var(--success);">● Low  0–34</span>
+        <span style="color:var(--warning);">● Moderate  35–64</span>
+        <span style="color:var(--danger);">● High  65–100</span>
+      </div>
+    </div>
+
+    <!-- Factor Bar Chart — full width -->
+    <div class="result-card full-width">
+      <h3><i class="fas fa-chart-bar"></i> Risk Factor Contributions</h3>
+      <div class="chart-wrapper" style="height:300px;">
+        <canvas id="factorBarChart" aria-label="Horizontal bar chart showing contribution of each lifestyle factor"></canvas>
+      </div>
+    </div>
+
+    <!-- Input Summary -->
+    <div class="result-card full-width">
+      <h3><i class="fas fa-list-alt"></i> Your Input Summary</h3>
+      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:16px;">
+        {% if result.inputs %}
+          {% set icons = {
+            'sleep_hours': 'fa-bed',
+            'caffeine_mg': 'fa-coffee',
+            'screen_time_hours': 'fa-mobile-alt',
+            'workload_level': 'fa-tasks',
+            'physical_activity_minutes': 'fa-running',
+            'study_hours': 'fa-book-open',
+            'break_frequency': 'fa-pause-circle',
+            'mood_score': 'fa-smile'
+          } %}
+          {% set labels = {
+            'sleep_hours': 'Sleep Hours',
+            'caffeine_mg': 'Caffeine (mg)',
+            'screen_time_hours': 'Screen Time (h)',
+            'workload_level': 'Workload /10',
+            'physical_activity_minutes': 'Activity (min)',
+            'study_hours': 'Study Hours',
+            'break_frequency': 'Break Count',
+            'mood_score': 'Mood /10'
+          } %}
+          {% for key, val in result.inputs.items() %}
+          <div style="background:var(--bg-alt);border:1px solid var(--border);border-radius:var(--radius);padding:16px;text-align:center;">
+            <i class="fas {{ icons.get(key, 'fa-dot-circle') }}" style="color:var(--primary);font-size:1.2rem;margin-bottom:8px;display:block;"></i>
+            <div style="font-size:1.4rem;font-weight:800;color:var(--text);">
+              {{ val | round(1) }}
+            </div>
+            <div style="font-size:0.75rem;color:var(--text-muted);font-weight:600;margin-top:4px;">
+              {{ labels.get(key, key) }}
+            </div>
+          </div>
+          {% endfor %}
+        {% endif %}
+      </div>
+    </div>
+
+  </div><!-- /result-grid -->
+
+  <!-- ── Action Buttons ──────────────────────────────────────────────────── -->
+  <div class="result-actions">
+    <a href="/" class="btn btn-primary">
+      <i class="fas fa-redo"></i> Analyze Again
+    </a>
+    <a href="/dashboard" class="btn btn-outline">
+      <i class="fas fa-chart-bar"></i> View Dashboard
+    </a>
+  </div>
+
+  <!-- ── Wellness Suggestions ────────────────────────────────────────────── -->
+  <div class="container" style="max-width:760px;margin-top:40px;padding-bottom:24px;">
+    <div class="result-card">
+      <h3><i class="fas fa-heart"></i> General Wellness Tips</h3>
+      <ul style="list-style:none;display:flex;flex-direction:column;gap:10px;">
+        {% set tips = [
+          ('fa-moon', 'Maintain a consistent sleep schedule to support recovery.'),
+          ('fa-coffee', 'Space caffeine intake throughout the day and avoid it close to bedtime.'),
+          ('fa-mobile-alt', 'Reduce unnecessary screen time, especially in the evening.'),
+          ('fa-list-check', 'Break large tasks into smaller, manageable pieces.'),
+          ('fa-running', 'Try light physical activity — even a 15-minute walk helps.'),
+          ('fa-pause-circle', 'Take regular short breaks to maintain focus and reduce fatigue.'),
+        ] %}
+        {% for icon, tip in tips %}
+        <li style="display:flex;align-items:flex-start;gap:12px;font-size:0.88rem;color:var(--text-muted);">
+          <i class="fas {{ icon }}" style="color:var(--primary);margin-top:2px;flex-shrink:0;width:16px;text-align:center;"></i>
+          <span>{{ tip }}</span>
+        </li>
+        {% endfor %}
+      </ul>
+      <div style="margin-top:20px;padding:14px 16px;background:rgba(99,102,241,0.06);border:1px solid rgba(99,102,241,0.2);border-radius:var(--radius);font-size:0.82rem;color:var(--text-muted);">
+        <i class="fas fa-shield-alt" style="color:var(--primary);margin-right:6px;"></i>
+        <strong>Reminder:</strong> These are general wellness suggestions from an educational model only. They are not medical advice. Please consult a qualified healthcare professional for personal health concerns.
+      </div>
+    </div>
+  </div>
+
+</main>
+
+<!-- ── Footer ─────────────────────────────────────────────────────────────── -->
+<footer class="footer">
+  <div class="container">
+    <div class="footer-content">
+      <div class="footer-brand"><i class="fas fa-brain"></i><span>Lifestyle AI</span></div>
+      <p class="footer-disclaimer">Educational wellness analytics project. Not a medical diagnostic tool.</p>
+      <p class="footer-copy">© 2024 Lifestyle Telemetry & Overthinking Risk Predictor — Python · Flask · scikit-learn</p>
+    </div>
+  </div>
+</footer>
+
+<script src="{{ url_for('static', filename='js/script.js') }}"></script>
+</body>
+</html>

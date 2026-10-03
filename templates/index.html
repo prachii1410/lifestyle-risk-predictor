@@ -1,0 +1,400 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Lifestyle Telemetry & Overthinking Risk Predictor</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+<body>
+
+<!-- ── Navigation ─────────────────────────────────────────────────────────── -->
+<nav class="navbar" id="navbar">
+  <div class="nav-container">
+    <a href="/" class="nav-logo">
+      <i class="fas fa-brain"></i> Lifestyle AI
+    </a>
+    <button class="nav-toggle" id="navToggle" aria-label="Toggle navigation">
+      <i class="fas fa-bars"></i>
+    </button>
+    <ul class="nav-links" id="navLinks">
+      <li><a href="/" class="nav-link active"><i class="fas fa-home"></i> Home</a></li>
+      <li><a href="#analyze-section" class="nav-link"><i class="fas fa-flask"></i> Analyze</a></li>
+      <li><a href="/dashboard" class="nav-link"><i class="fas fa-chart-bar"></i> Dashboard</a></li>
+      <li><a href="#insights-section" class="nav-link"><i class="fas fa-lightbulb"></i> Insights</a></li>
+      <li><a href="#about-section" class="nav-link"><i class="fas fa-info-circle"></i> About</a></li>
+    </ul>
+    <div class="nav-actions">
+      <button class="theme-toggle" id="themeToggle" aria-label="Toggle dark mode" title="Toggle Dark Mode">
+        <i class="fas fa-moon" id="themeIcon"></i>
+      </button>
+    </div>
+  </div>
+</nav>
+
+<!-- ── Hero Section ──────────────────────────────────────────────────────── -->
+<section class="hero" id="hero">
+  <div class="hero-bg">
+    <div class="floating-shape shape-1"></div>
+    <div class="floating-shape shape-2"></div>
+    <div class="floating-shape shape-3"></div>
+    <div class="floating-shape shape-4"></div>
+    <div class="floating-shape shape-5"></div>
+  </div>
+  <div class="hero-content">
+    <div class="hero-badge">
+      <i class="fas fa-brain"></i> AI-Powered Wellness Analytics
+    </div>
+    <h1 class="hero-title">Understand Your Day.<br><span class="gradient-text">Predict Your Stress Patterns.</span></h1>
+    <p class="hero-subtitle">An AI-powered lifestyle analytics tool that transforms everyday habits into meaningful wellness insights using machine learning.</p>
+    <div class="hero-disclaimer">
+      <i class="fas fa-shield-alt"></i>
+      <span>Educational tool only. Not a medical or psychological diagnostic tool.</span>
+    </div>
+    <div class="hero-buttons">
+      <a href="#analyze-section" class="btn btn-primary btn-large">
+        <i class="fas fa-flask"></i> Analyze My Day
+      </a>
+      <a href="/dashboard" class="btn btn-outline btn-large">
+        <i class="fas fa-chart-bar"></i> Explore Dashboard
+      </a>
+    </div>
+    <div class="hero-stats">
+      <div class="stat-item">
+        <span class="stat-number">8</span>
+        <span class="stat-label">Lifestyle Factors</span>
+      </div>
+      <div class="stat-item">
+        <span class="stat-number">1500</span>
+        <span class="stat-label">Training Samples</span>
+      </div>
+      <div class="stat-item">
+        <span class="stat-number">RF</span>
+        <span class="stat-label">Algorithm</span>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ── Feature Cards ─────────────────────────────────────────────────────── -->
+<section class="features-section" id="features-section">
+  <div class="container">
+    <div class="section-header">
+      <h2>How It Helps</h2>
+      <p>Four pillars of AI-powered lifestyle telemetry</p>
+    </div>
+    <div class="features-grid">
+      <div class="feature-card">
+        <div class="feature-icon"><i class="fas fa-brain"></i></div>
+        <h3>AI Prediction</h3>
+        <p>Machine learning analyzes your lifestyle patterns using a Random Forest model trained on synthetic wellness data.</p>
+      </div>
+      <div class="feature-card">
+        <div class="feature-icon"><i class="fas fa-chart-line"></i></div>
+        <h3>Lifestyle Analytics</h3>
+        <p>Understand how daily habits like sleep, caffeine, and screen time relate to your risk score.</p>
+      </div>
+      <div class="feature-card">
+        <div class="feature-icon"><i class="fas fa-bolt"></i></div>
+        <h3>Instant Insights</h3>
+        <p>Receive personalized wellness insights immediately after entering your lifestyle data.</p>
+      </div>
+      <div class="feature-card">
+        <div class="feature-icon"><i class="fas fa-chart-area"></i></div>
+        <h3>Visual Dashboard</h3>
+        <p>Explore your lifestyle through interactive charts, radar plots, and risk breakdowns.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ── Analysis Form Section ──────────────────────────────────────────────── -->
+<section class="analyze-section" id="analyze-section">
+  <div class="container">
+    <div class="section-header">
+      <h2><i class="fas fa-flask"></i> Analyze My Day</h2>
+      <p>Enter your lifestyle telemetry for today and get your personalized risk score.</p>
+    </div>
+
+    {% if error %}
+    <div class="alert alert-error">
+      <i class="fas fa-exclamation-circle"></i> {{ error }}
+    </div>
+    {% endif %}
+
+    <div class="form-card glass-card">
+      <div class="form-header">
+        <div class="form-actions-top">
+          <button type="button" class="btn btn-secondary btn-sm" id="demoBtn">
+            <i class="fas fa-play"></i> Try Demo Data
+          </button>
+          <button type="button" class="btn btn-ghost btn-sm" id="resetBtn">
+            <i class="fas fa-redo"></i> Reset
+          </button>
+        </div>
+      </div>
+
+      <form id="predictForm" method="POST" action="/predict">
+        <div class="sliders-grid">
+
+          <!-- Sleep Hours -->
+          <div class="slider-group">
+            <label for="sleep_hours">
+              <i class="fas fa-bed"></i> Sleep Hours
+              <span class="slider-value" id="sleep_val">7.0</span>
+            </label>
+            <input type="range" id="sleep_hours" name="sleep_hours"
+              min="0" max="12" step="0.5" value="7.0"
+              class="slider" aria-label="Sleep hours">
+            <div class="slider-labels"><span>0h</span><span>12h</span></div>
+          </div>
+
+          <!-- Caffeine -->
+          <div class="slider-group">
+            <label for="caffeine_mg">
+              <i class="fas fa-coffee"></i> Caffeine Intake
+              <span class="slider-value" id="caffeine_val">200</span>
+            </label>
+            <input type="range" id="caffeine_mg" name="caffeine_mg"
+              min="0" max="600" step="10" value="200"
+              class="slider" aria-label="Caffeine intake in mg">
+            <div class="slider-labels"><span>0 mg</span><span>600 mg</span></div>
+          </div>
+
+          <!-- Screen Time -->
+          <div class="slider-group">
+            <label for="screen_time_hours">
+              <i class="fas fa-mobile-alt"></i> Screen Time
+              <span class="slider-value" id="screen_val">6.0</span>
+            </label>
+            <input type="range" id="screen_time_hours" name="screen_time_hours"
+              min="0" max="16" step="0.5" value="6.0"
+              class="slider" aria-label="Screen time in hours">
+            <div class="slider-labels"><span>0h</span><span>16h</span></div>
+          </div>
+
+          <!-- Workload Level -->
+          <div class="slider-group">
+            <label for="workload_level">
+              <i class="fas fa-tasks"></i> Workload Level
+              <span class="slider-value" id="workload_val">5</span>
+            </label>
+            <input type="range" id="workload_level" name="workload_level"
+              min="1" max="10" step="1" value="5"
+              class="slider" aria-label="Workload level 1 to 10">
+            <div class="slider-labels"><span>1 (Low)</span><span>10 (Max)</span></div>
+          </div>
+
+          <!-- Physical Activity -->
+          <div class="slider-group">
+            <label for="physical_activity_minutes">
+              <i class="fas fa-running"></i> Physical Activity
+              <span class="slider-value" id="activity_val">45</span>
+            </label>
+            <input type="range" id="physical_activity_minutes" name="physical_activity_minutes"
+              min="0" max="180" step="5" value="45"
+              class="slider" aria-label="Physical activity in minutes">
+            <div class="slider-labels"><span>0 min</span><span>180 min</span></div>
+          </div>
+
+          <!-- Study / Work Hours -->
+          <div class="slider-group">
+            <label for="study_hours">
+              <i class="fas fa-book-open"></i> Study / Work Hours
+              <span class="slider-value" id="study_val">6.0</span>
+            </label>
+            <input type="range" id="study_hours" name="study_hours"
+              min="0" max="16" step="0.5" value="6.0"
+              class="slider" aria-label="Study or work hours">
+            <div class="slider-labels"><span>0h</span><span>16h</span></div>
+          </div>
+
+          <!-- Break Frequency -->
+          <div class="slider-group">
+            <label for="break_frequency">
+              <i class="fas fa-pause-circle"></i> Break Frequency
+              <span class="slider-value" id="breaks_val">8</span>
+            </label>
+            <input type="range" id="break_frequency" name="break_frequency"
+              min="0" max="20" step="1" value="8"
+              class="slider" aria-label="Number of breaks per day">
+            <div class="slider-labels"><span>0</span><span>20 breaks</span></div>
+          </div>
+
+          <!-- Mood Score -->
+          <div class="slider-group">
+            <label for="mood_score">
+              <i class="fas fa-smile"></i> Daily Mood
+              <span class="slider-value" id="mood_val">6</span>
+            </label>
+            <input type="range" id="mood_score" name="mood_score"
+              min="1" max="10" step="1" value="6"
+              class="slider" aria-label="Daily mood score 1 to 10">
+            <div class="slider-labels"><span>1 (Low)</span><span>10 (Great)</span></div>
+          </div>
+
+        </div><!-- /sliders-grid -->
+
+        <div class="form-footer">
+          <button type="submit" class="btn btn-analyze" id="analyzeBtn">
+            <span class="btn-text"><i class="fas fa-brain"></i> Analyze My Day →</span>
+            <span class="btn-loading hidden">
+              <i class="fas fa-circle-notch fa-spin"></i> Analyzing...
+            </span>
+          </button>
+        </div>
+
+      </form>
+
+      <!-- Loading overlay -->
+      <div class="loading-overlay hidden" id="loadingOverlay">
+        <div class="loading-content">
+          <div class="loading-spinner"></div>
+          <p class="loading-text" id="loadingText">Analyzing your lifestyle telemetry...</p>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ── How It Works ──────────────────────────────────────────────────────── -->
+<section class="how-it-works" id="insights-section">
+  <div class="container">
+    <div class="section-header">
+      <h2>How It Works</h2>
+      <p>Four steps from input to insight</p>
+    </div>
+    <div class="steps-container">
+      <div class="step-card">
+        <div class="step-number">1</div>
+        <div class="step-icon"><i class="fas fa-sliders-h"></i></div>
+        <h3>Enter Lifestyle Data</h3>
+        <p>Adjust the sliders to reflect your sleep, caffeine, screen time, and other daily lifestyle factors.</p>
+      </div>
+      <div class="step-connector"></div>
+      <div class="step-card">
+        <div class="step-number">2</div>
+        <div class="step-icon"><i class="fas fa-brain"></i></div>
+        <h3>AI Analyzes Patterns</h3>
+        <p>Your data is sent to the Flask backend where it is preprocessed and passed through the prediction pipeline.</p>
+      </div>
+      <div class="step-connector"></div>
+      <div class="step-card">
+        <div class="step-number">3</div>
+        <div class="step-icon"><i class="fas fa-tree"></i></div>
+        <h3>Random Forest Scores</h3>
+        <p>200 decision trees vote to generate your personalized overthinking risk score from 0 to 100.</p>
+      </div>
+      <div class="step-connector"></div>
+      <div class="step-card">
+        <div class="step-number">4</div>
+        <div class="step-icon"><i class="fas fa-chart-pie"></i></div>
+        <h3>Dashboard Provides Insights</h3>
+        <p>View your risk score, factor breakdown, personalized insights, and interactive charts.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ── About Section ─────────────────────────────────────────────────────── -->
+<section class="about-section" id="about-section">
+  <div class="container">
+    <div class="about-grid">
+      <div class="about-content">
+        <div class="section-header left-aligned">
+          <h2>About This Project</h2>
+        </div>
+        <div class="about-block">
+          <h3><i class="fas fa-exclamation-circle"></i> The Problem</h3>
+          <p>Daily lifestyle factors such as sleep deprivation, excessive caffeine, screen overexposure, and high workloads can influence how people experience stress and overthinking. Recognizing these patterns early can promote proactive wellness habits.</p>
+        </div>
+        <div class="about-block">
+          <h3><i class="fas fa-lightbulb"></i> The Solution</h3>
+          <p>This project uses synthetic lifestyle telemetry and a Random Forest machine learning model to estimate a daily risk score. It is designed for educational demonstration of applied machine learning in a wellness context.</p>
+        </div>
+        <div class="about-disclaimer glass-card">
+          <i class="fas fa-shield-alt"></i>
+          <div>
+            <strong>Important Note</strong>
+            <p>This project is created for educational and wellness analytics purposes. It does not diagnose anxiety, mental health disorders, or any medical condition. For mental health concerns, please consult a qualified healthcare professional.</p>
+          </div>
+        </div>
+      </div>
+      <div class="about-tech">
+        <div class="tech-card glass-card">
+          <h3><i class="fas fa-code"></i> Technology Stack</h3>
+          <div class="tech-grid">
+            <div class="tech-item"><i class="fab fa-python"></i> Python</div>
+            <div class="tech-item"><i class="fas fa-server"></i> Flask</div>
+            <div class="tech-item"><i class="fas fa-robot"></i> scikit-learn</div>
+            <div class="tech-item"><i class="fas fa-tree"></i> Random Forest</div>
+            <div class="tech-item"><i class="fas fa-table"></i> pandas</div>
+            <div class="tech-item"><i class="fas fa-calculator"></i> NumPy</div>
+            <div class="tech-item"><i class="fab fa-html5"></i> HTML5/CSS3</div>
+            <div class="tech-item"><i class="fas fa-chart-pie"></i> Chart.js</div>
+          </div>
+        </div>
+        <div class="model-info-card glass-card" id="modelInfoCard">
+          <h3><i class="fas fa-cogs"></i> Model Info</h3>
+          <div class="metric-row">
+            <span>Algorithm</span><strong>Random Forest Regressor</strong>
+          </div>
+          <div class="metric-row">
+            <span>Trees</span><strong>200</strong>
+          </div>
+          <div class="metric-row">
+            <span>Features</span><strong>8 lifestyle factors</strong>
+          </div>
+          <div class="metric-row" id="metricMAE">
+            <span>MAE</span><strong>Loading...</strong>
+          </div>
+          <div class="metric-row" id="metricR2">
+            <span>R² Score</span><strong>Loading...</strong>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ── History Section ───────────────────────────────────────────────────── -->
+<section class="history-section" id="history-section">
+  <div class="container">
+    <div class="section-header">
+      <h2><i class="fas fa-clock"></i> Previous Analyses</h2>
+      <p>Your recent risk score history — stored locally in your browser</p>
+    </div>
+    <div class="history-container glass-card">
+      <div id="historyList" class="history-list">
+        <div class="history-empty" id="historyEmpty">
+          <i class="fas fa-history fa-2x"></i>
+          <p>No previous analyses yet. Run your first analysis above!</p>
+        </div>
+      </div>
+      <div class="history-actions" id="historyActions" style="display:none">
+        <button class="btn btn-ghost btn-sm" id="clearHistoryBtn">
+          <i class="fas fa-trash"></i> Clear History
+        </button>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ── Footer ────────────────────────────────────────────────────────────── -->
+<footer class="footer">
+  <div class="container">
+    <div class="footer-content">
+      <div class="footer-brand">
+        <i class="fas fa-brain"></i>
+        <span>Lifestyle AI</span>
+      </div>
+      <p class="footer-disclaimer">Educational wellness analytics project. Not a medical diagnostic tool.</p>
+      <p class="footer-copy">© 2024 Lifestyle Telemetry & Overthinking Risk Predictor — Python · Flask · scikit-learn</p>
+    </div>
+  </div>
+</footer>
+
+<script src="{{ url_for('static', filename='js/script.js') }}"></script>
+</body>
+</html>
