@@ -673,9 +673,37 @@ def api_send_email():
         return jsonify({"error": f"Failed to send email: {str(e)}"}), 500
 
 
+# ── Auto-train on startup (runs for both gunicorn and direct python) ───────────
+def _startup():
+    """Generate data and train model if artifacts are missing."""
+    if not os.path.exists(MODEL_PATH) or not os.path.exists(SCALER_PATH):
+        logger.info("Model not found — generating data and training now...")
+        try:
+            # Step 1: generate data if missing
+            if not os.path.exists(DATA_PATH):
+                sys.path.insert(0, BASE_DIR)
+                from data.generate_data import generate_lifestyle_data
+                os.makedirs(DATA_DIR, exist_ok=True)
+                df = generate_lifestyle_data(n_samples=1500, random_state=42)
+                df.to_csv(DATA_PATH, index=False)
+                logger.info(f"Dataset generated: {len(df)} rows")
+            # Step 2: train
+            import subprocess
+            result = subprocess.run(
+                [sys.executable, os.path.join(MODEL_DIR, "train_model.py")],
+                capture_output=True, text=True, timeout=180
+            )
+            logger.info(result.stdout[-500:] if result.stdout else "")
+            if result.returncode != 0:
+                logger.error(f"Training failed: {result.stderr[-300:]}")
+            else:
+                logger.info("Model trained successfully on startup.")
+        except Exception as e:
+            logger.error(f"Startup training error: {e}")
+    load_model()
+
+_startup()
+
 # ── Entry point ────────────────────────────────────────────────────────────────
 if __name__ == "__main__":
-    # Pre-load model on startup
-    if not load_model():
-        logger.warning("Model not loaded. Train it with: python model/train_model.py")
-    app.run(debug=True, host="0.0.0.0", port=5000)
+    app.run(debug=False, host="0.0.0.0", port=int(os.environ.get("PORT", 5000)))
