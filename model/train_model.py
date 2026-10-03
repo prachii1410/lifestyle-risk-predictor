@@ -55,6 +55,9 @@ FEATURES = [
     "study_hours",
     "break_frequency",
     "mood_score",
+    "hydration_glasses",
+    "meditation_minutes",
+    "social_interaction_hours",
 ]
 TARGET = "overthinking_risk_score"
 
@@ -108,7 +111,7 @@ def train():
     X_test_scaled  = scaler.transform(X_test)
 
     # ── 6. Train Random Forest ────────────────────────────────────────────────
-    print(f"[6/8] Training RandomForestRegressor (n_estimators=200, random_state={RANDOM_STATE})...")
+    print(f"[6/8] Training RandomForestRegressor (n_estimators=200, n_features={len(FEATURES)}, random_state={RANDOM_STATE})...")
     model = RandomForestRegressor(
         n_estimators=200,
         max_depth=12,

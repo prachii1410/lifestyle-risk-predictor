@@ -17,6 +17,9 @@ FEATURE_NAMES = [
     "study_hours",
     "break_frequency",
     "mood_score",
+    "hydration_glasses",
+    "meditation_minutes",
+    "social_interaction_hours",
 ]
 
 FEATURE_BOUNDS = {
@@ -28,6 +31,9 @@ FEATURE_BOUNDS = {
     "study_hours":               (0, 16),
     "break_frequency":           (0, 20),
     "mood_score":                (1, 10),
+    "hydration_glasses":         (0, 15),
+    "meditation_minutes":        (0, 120),
+    "social_interaction_hours":  (0, 12),
 }
 
 
@@ -68,14 +74,17 @@ def get_factor_contributions(inputs: dict, risk_score: float) -> dict:
     Estimate relative contribution of each lifestyle factor to the risk score.
     Returns a dict of factor → percentage (0–100) for visualization.
     """
-    s  = float(inputs["sleep_hours"])
-    c  = float(inputs["caffeine_mg"])
-    sc = float(inputs["screen_time_hours"])
-    w  = float(inputs["workload_level"])
-    a  = float(inputs["physical_activity_minutes"])
-    st = float(inputs["study_hours"])
-    b  = float(inputs["break_frequency"])
-    m  = float(inputs["mood_score"])
+    s   = float(inputs["sleep_hours"])
+    c   = float(inputs["caffeine_mg"])
+    sc  = float(inputs["screen_time_hours"])
+    w   = float(inputs["workload_level"])
+    a   = float(inputs["physical_activity_minutes"])
+    st  = float(inputs["study_hours"])
+    b   = float(inputs["break_frequency"])
+    m   = float(inputs["mood_score"])
+    h   = float(inputs.get("hydration_glasses", 6))
+    med = float(inputs.get("meditation_minutes", 0))
+    soc = float(inputs.get("social_interaction_hours", 2))
 
     # Higher value → higher displayed bar (risk direction)
     factors = {
@@ -85,6 +94,9 @@ def get_factor_contributions(inputs: dict, risk_score: float) -> dict:
         "Workload Impact":      round(((w - 1) / 9) * 100, 1),
         "Activity Impact":      round((1 - a / 180) * 100, 1),   # low activity → high bar
         "Mood Impact":          round((1 - (m - 1) / 9) * 100, 1),
+        "Hydration Impact":     round((1 - h / 15) * 100, 1),    # low hydration → high bar
+        "Meditation Impact":    round((1 - med / 120) * 100, 1), # no meditation → high bar
+        "Social Impact":        round((1 - soc / 12) * 100, 1),  # isolation → high bar
     }
     return factors
 
@@ -95,14 +107,17 @@ def generate_insights(inputs: dict) -> list[dict]:
     Returns a list of {icon, title, message, type} dicts.
     """
     insights = []
-    s  = float(inputs["sleep_hours"])
-    c  = float(inputs["caffeine_mg"])
-    sc = float(inputs["screen_time_hours"])
-    w  = float(inputs["workload_level"])
-    a  = float(inputs["physical_activity_minutes"])
-    st = float(inputs["study_hours"])
-    b  = float(inputs["break_frequency"])
-    m  = float(inputs["mood_score"])
+    s   = float(inputs["sleep_hours"])
+    c   = float(inputs["caffeine_mg"])
+    sc  = float(inputs["screen_time_hours"])
+    w   = float(inputs["workload_level"])
+    a   = float(inputs["physical_activity_minutes"])
+    st  = float(inputs["study_hours"])
+    b   = float(inputs["break_frequency"])
+    m   = float(inputs["mood_score"])
+    h   = float(inputs.get("hydration_glasses", 6))
+    med = float(inputs.get("meditation_minutes", 0))
+    soc = float(inputs.get("social_interaction_hours", 2))
 
     if s < 6:
         insights.append({"icon": "🛌", "title": "Sleep", "type": "warning",
@@ -150,5 +165,27 @@ def generate_insights(inputs: dict) -> list[dict]:
     if st > 10:
         insights.append({"icon": "💼", "title": "Study / Work Hours", "type": "warning",
             "message": "Very high study/work hours detected. Long uninterrupted sessions can increase mental fatigue. Consider the Pomodoro technique."})
+
+    # ── New factor insights ────────────────────────────────────────────────────
+    if h < 4:
+        insights.append({"icon": "💧", "title": "Hydration", "type": "warning",
+            "message": "Low water intake detected. Staying hydrated supports cognitive function and reduces fatigue-related stress."})
+    elif h >= 8:
+        insights.append({"icon": "💧", "title": "Hydration", "type": "success",
+            "message": "Good hydration! Adequate water intake supports focus and mental clarity."})
+
+    if med == 0:
+        insights.append({"icon": "🧘", "title": "Meditation", "type": "neutral",
+            "message": "No meditation recorded today. Even 5–10 minutes of mindfulness can reduce stress and improve clarity."})
+    elif med >= 15:
+        insights.append({"icon": "🧘", "title": "Meditation", "type": "success",
+            "message": "Great mindfulness practice! Regular meditation is strongly associated with reduced overthinking and anxiety."})
+
+    if soc < 1:
+        insights.append({"icon": "🤝", "title": "Social Interaction", "type": "warning",
+            "message": "Very low social interaction today. Brief positive social contact can buffer against stress and overthinking."})
+    elif soc >= 3:
+        insights.append({"icon": "🤝", "title": "Social Interaction", "type": "success",
+            "message": "Good social engagement today. Meaningful social interaction is a strong protective factor for wellbeing."})
 
     return insights

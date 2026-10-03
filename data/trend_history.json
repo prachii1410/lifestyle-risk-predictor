@@ -1,0 +1,21 @@
+[
+  {
+    "ts": "2026-10-03T06:09:27.145961",
+    "risk_score": 51.6,
+    "risk_level": "Moderate Risk",
+    "color": "#f59e0b",
+    "inputs": {
+      "sleep_hours": 7.0,
+      "caffeine_mg": 200.0,
+      "screen_time_hours": 6.0,
+      "workload_level": 5.0,
+      "physical_activity_minutes": 45.0,
+      "study_hours": 6.0,
+      "break_frequency": 8.0,
+      "mood_score": 6.0,
+      "hydration_glasses": 6.0,
+      "meditation_minutes": 0.0,
+      "social_interaction_hours": 2.0
+    }
+  }
+]

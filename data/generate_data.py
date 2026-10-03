@@ -9,7 +9,7 @@ import pandas as pd
 def generate_lifestyle_data(n_samples=1500, random_state=42):
     """
     Generate synthetic lifestyle telemetry dataset.
-    
+
     Relationships encoded:
     - Lower sleep → higher risk
     - Higher caffeine → higher risk
@@ -18,6 +18,9 @@ def generate_lifestyle_data(n_samples=1500, random_state=42):
     - Higher physical activity → lower risk
     - More breaks → lower risk
     - Better mood → lower risk
+    - Higher hydration → lower risk
+    - More meditation → lower risk
+    - More social interaction → lower risk
     """
     rng = np.random.RandomState(random_state)
 
@@ -30,22 +33,25 @@ def generate_lifestyle_data(n_samples=1500, random_state=42):
     study_hours             = np.clip(rng.normal(6.0, 2.5, n_samples), 0, 16)
     break_frequency         = np.clip(rng.normal(8, 4, n_samples), 0, 20)
     mood_score              = np.clip(rng.normal(6.0, 1.8, n_samples), 1, 10)
+    hydration_glasses       = np.clip(rng.normal(6.0, 2.5, n_samples), 0, 15)
+    meditation_minutes      = np.clip(rng.exponential(10, n_samples), 0, 120)
+    social_interaction_hrs  = np.clip(rng.normal(2.5, 1.5, n_samples), 0, 12)
 
     # --- Target score construction with non-linear relationships ---
-    # Risk increases with poor sleep, high caffeine, high screen time, high workload
-    # Risk decreases with physical activity, breaks, good mood
-
-    sleep_risk      = 40 * np.exp(-0.35 * sleep_hours)          # exponential: very low sleep → high risk
-    caffeine_risk   = 30 * (caffeine_mg / 600) ** 1.2           # power curve
+    sleep_risk      = 40 * np.exp(-0.35 * sleep_hours)
+    caffeine_risk   = 30 * (caffeine_mg / 600) ** 1.2
     screen_risk     = 20 * (screen_time_hours / 16) ** 1.1
     workload_risk   = 25 * ((workload_level - 1) / 9) ** 0.9
     study_risk      = 15 * (study_hours / 16) ** 0.8
 
-    activity_relief = 20 * (physical_activity_mins / 180) ** 0.7
-    break_relief    = 15 * (break_frequency / 20) ** 0.7
-    mood_relief     = 25 * ((mood_score - 1) / 9) ** 0.8
+    activity_relief    = 20 * (physical_activity_mins / 180) ** 0.7
+    break_relief       = 15 * (break_frequency / 20) ** 0.7
+    mood_relief        = 25 * ((mood_score - 1) / 9) ** 0.8
+    hydration_relief   = 12 * (hydration_glasses / 15) ** 0.6
+    meditation_relief  = 15 * (meditation_minutes / 120) ** 0.6
+    social_relief      = 10 * (social_interaction_hrs / 12) ** 0.7
 
-    # Interaction terms (non-linear combinations)
+    # Interaction terms
     interaction_bad  = 10 * ((caffeine_mg / 600) * (1 - sleep_hours / 12))
     interaction_good = 8  * ((physical_activity_mins / 180) * (mood_score / 10))
 
@@ -59,6 +65,9 @@ def generate_lifestyle_data(n_samples=1500, random_state=42):
         - activity_relief
         - break_relief
         - mood_relief
+        - hydration_relief
+        - meditation_relief
+        - social_relief
         - interaction_good
     )
 
@@ -72,15 +81,18 @@ def generate_lifestyle_data(n_samples=1500, random_state=42):
     overthinking_risk_score = np.clip(np.round(overthinking_risk_score, 2), 0, 100)
 
     df = pd.DataFrame({
-        "sleep_hours":              np.round(sleep_hours, 2),
-        "caffeine_mg":              np.round(caffeine_mg, 1),
-        "screen_time_hours":        np.round(screen_time_hours, 2),
-        "workload_level":           np.round(workload_level, 1),
-        "physical_activity_minutes":np.round(physical_activity_mins, 1),
-        "study_hours":              np.round(study_hours, 2),
-        "break_frequency":          np.round(break_frequency, 1),
-        "mood_score":               np.round(mood_score, 1),
-        "overthinking_risk_score":  overthinking_risk_score,
+        "sleep_hours":               np.round(sleep_hours, 2),
+        "caffeine_mg":               np.round(caffeine_mg, 1),
+        "screen_time_hours":         np.round(screen_time_hours, 2),
+        "workload_level":            np.round(workload_level, 1),
+        "physical_activity_minutes": np.round(physical_activity_mins, 1),
+        "study_hours":               np.round(study_hours, 2),
+        "break_frequency":           np.round(break_frequency, 1),
+        "mood_score":                np.round(mood_score, 1),
+        "hydration_glasses":         np.round(hydration_glasses, 1),
+        "meditation_minutes":        np.round(meditation_minutes, 1),
+        "social_interaction_hours":  np.round(social_interaction_hrs, 2),
+        "overthinking_risk_score":   overthinking_risk_score,
     })
 
     return df

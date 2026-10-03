@@ -29,6 +29,9 @@ const DEMO_VALUES = {
   study_hours:               9,
   break_frequency:           3,
   mood_score:                4,
+  hydration_glasses:         3,
+  meditation_minutes:        0,
+  social_interaction_hours:  0.5,
 };
 
 const DEFAULT_VALUES = {
@@ -40,6 +43,9 @@ const DEFAULT_VALUES = {
   study_hours:               6.0,
   break_frequency:           8,
   mood_score:                6,
+  hydration_glasses:         6,
+  meditation_minutes:        0,
+  social_interaction_hours:  2.0,
 };
 
 /* Slider display suffix map */
@@ -52,6 +58,9 @@ const SLIDER_SUFFIX = {
   study_hours:               ' hrs',
   break_frequency:           '',
   mood_score:                '/10',
+  hydration_glasses:         ' gl',
+  meditation_minutes:        ' min',
+  social_interaction_hours:  ' hrs',
 };
 
 /* ── Utility helpers ────────────────────────────────────────── */
@@ -554,6 +563,7 @@ function initDashboard() {
 
   loadChartJS(() => {
     renderDashboardCharts();
+    loadTrendChart();
   });
 
   loadModelPerformance();
@@ -601,6 +611,78 @@ function loadModelPerformance() {
       if (r2El)  r2El.textContent  = (data.r2  || 0).toFixed(4);
     })
     .catch(() => {});
+}
+
+/* ── Trend Chart (Feature 2) ─────────────────────────────── */
+function loadTrendChart() {
+  const canvas  = document.getElementById('trendChart');
+  const empty   = document.getElementById('trendChartEmpty');
+  const wrapper = document.getElementById('trendChartWrapper');
+  if (!canvas) return;
+
+  fetch('/api/trend-data')
+    .then(r => r.json())
+    .then(data => {
+      const history = data.history || [];
+      if (history.length < 2) {
+        if (empty)   { empty.style.display = ''; }
+        if (wrapper) { wrapper.style.display = 'none'; }
+        return;
+      }
+
+      const labels = history.map(e => {
+        const d = new Date(e.ts);
+        return d.toLocaleDateString(undefined, { month: 'short', day: 'numeric' }) +
+               ' ' + d.toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' });
+      });
+      const scores = history.map(e => e.risk_score);
+      const colors = history.map(e => e.color || '#6366f1');
+
+      new Chart(canvas, {
+        type: 'line',
+        data: {
+          labels,
+          datasets: [{
+            label: 'Risk Score',
+            data: scores,
+            borderColor: '#6366f1',
+            backgroundColor: 'rgba(99,102,241,0.1)',
+            pointBackgroundColor: colors,
+            pointBorderColor: colors,
+            pointRadius: 5,
+            fill: true,
+            tension: 0.35,
+          }],
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: {
+            legend: { display: false },
+            tooltip: {
+              callbacks: {
+                label: ctx => ` Risk Score: ${ctx.parsed.y}`,
+              },
+            },
+          },
+          scales: {
+            x: {
+              ticks: { maxTicksLimit: 8, maxRotation: 30, font: { size: 11 } },
+              grid: { display: false },
+            },
+            y: {
+              min: 0, max: 100,
+              ticks: { stepSize: 20 },
+              grid: { color: 'rgba(0,0,0,0.05)' },
+            },
+          },
+        },
+      });
+    })
+    .catch(() => {
+      if (empty)   { empty.style.display = ''; }
+      if (wrapper) { wrapper.style.display = 'none'; }
+    });
 }
 
 /* Data Explorer */

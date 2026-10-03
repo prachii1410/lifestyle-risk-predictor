@@ -210,7 +210,80 @@
     <a href="/dashboard" class="btn btn-outline">
       <i class="fas fa-chart-bar"></i> View Dashboard
     </a>
+    <a href="/export-pdf" class="btn btn-outline" target="_blank">
+      <i class="fas fa-file-pdf"></i> Export PDF
+    </a>
+    <button class="btn btn-outline" id="emailBtn" onclick="showEmailModal()">
+      <i class="fas fa-envelope"></i> Email Report
+    </button>
   </div>
+
+  <!-- ── Email Modal ────────────────────────────────────────────────────── -->
+  <div id="emailModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:9999;align-items:center;justify-content:center;">
+    <div style="background:var(--bg);border-radius:var(--radius-lg);padding:32px;max-width:420px;width:90%;box-shadow:0 20px 60px rgba(0,0,0,0.3);">
+      <h3 style="margin-bottom:16px;"><i class="fas fa-envelope" style="color:var(--primary);margin-right:8px;"></i>Email Your Report</h3>
+      <p style="font-size:0.87rem;color:var(--text-muted);margin-bottom:20px;">Enter your email address to receive a summary of this risk analysis.</p>
+      <input type="email" id="emailInput" placeholder="you@example.com"
+        style="width:100%;padding:10px 14px;border:1px solid var(--border);border-radius:var(--radius);font-size:0.95rem;background:var(--bg-alt);color:var(--text);box-sizing:border-box;margin-bottom:16px;">
+      <div id="emailStatus" style="font-size:0.85rem;min-height:20px;margin-bottom:12px;"></div>
+      <div style="display:flex;gap:10px;justify-content:flex-end;">
+        <button class="btn btn-ghost btn-sm" onclick="closeEmailModal()">Cancel</button>
+        <button class="btn btn-primary btn-sm" id="emailSendBtn" onclick="sendEmailReport()">
+          <i class="fas fa-paper-plane"></i> Send
+        </button>
+      </div>
+    </div>
+  </div>
+  <script>
+    function showEmailModal() {
+      const modal = document.getElementById('emailModal');
+      modal.style.display = 'flex';
+      document.getElementById('emailInput').focus();
+    }
+    function closeEmailModal() {
+      document.getElementById('emailModal').style.display = 'none';
+      document.getElementById('emailStatus').textContent = '';
+    }
+    function sendEmailReport() {
+      const email = document.getElementById('emailInput').value.trim();
+      const status = document.getElementById('emailStatus');
+      const btn = document.getElementById('emailSendBtn');
+      if (!email || !email.includes('@')) {
+        status.style.color = 'var(--danger)';
+        status.textContent = 'Please enter a valid email address.';
+        return;
+      }
+      btn.disabled = true;
+      btn.innerHTML = '<i class="fas fa-circle-notch fa-spin"></i> Sending...';
+      status.style.color = 'var(--text-muted)';
+      status.textContent = 'Sending your report...';
+      const resultData = window.__RESULT_DATA__ || null;
+      fetch('/api/send-email', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, result: resultData })
+      })
+      .then(r => r.json())
+      .then(data => {
+        btn.disabled = false;
+        btn.innerHTML = '<i class="fas fa-paper-plane"></i> Send';
+        if (data.error) {
+          status.style.color = 'var(--danger)';
+          status.textContent = data.error;
+        } else {
+          status.style.color = 'var(--success)';
+          status.textContent = data.message || 'Email sent successfully!';
+          setTimeout(closeEmailModal, 2000);
+        }
+      })
+      .catch(() => {
+        btn.disabled = false;
+        btn.innerHTML = '<i class="fas fa-paper-plane"></i> Send';
+        status.style.color = 'var(--danger)';
+        status.textContent = 'Network error. Please try again.';
+      });
+    }
+  </script>
 
   <!-- ── Wellness Suggestions ────────────────────────────────────────────── -->
   <div class="container" style="max-width:760px;margin-top:40px;padding-bottom:24px;">

@@ -2,7 +2,7 @@
   "algorithm": "Random Forest Regressor",
   "dataset": "Synthetic Lifestyle Telemetry Dataset",
   "n_samples": 1500,
-  "n_features": 8,
+  "n_features": 11,
   "features": [
     "sleep_hours",
     "caffeine_mg",
@@ -11,24 +11,30 @@
     "physical_activity_minutes",
     "study_hours",
     "break_frequency",
-    "mood_score"
+    "mood_score",
+    "hydration_glasses",
+    "meditation_minutes",
+    "social_interaction_hours"
   ],
   "n_estimators": 200,
   "random_state": 42,
   "train_samples": 1200,
   "test_samples": 300,
-  "mae": 6.6942,
-  "mse": 72.6038,
-  "rmse": 8.5208,
-  "r2": 0.653,
+  "mae": 8.2726,
+  "mse": 106.8285,
+  "rmse": 10.3358,
+  "r2": 0.6007,
   "feature_importances": {
-    "sleep_hours": 0.09010877843685272,
-    "caffeine_mg": 0.1882656196268453,
-    "screen_time_hours": 0.08808644493367776,
-    "workload_level": 0.1921205196148885,
-    "physical_activity_minutes": 0.1347045017793353,
-    "study_hours": 0.07212867934474171,
-    "break_frequency": 0.07688672249200425,
-    "mood_score": 0.15769873377165458
+    "sleep_hours": 0.06359705474878247,
+    "caffeine_mg": 0.15956339833422423,
+    "screen_time_hours": 0.08754095136261117,
+    "workload_level": 0.18192566033380145,
+    "physical_activity_minutes": 0.12056011596393983,
+    "study_hours": 0.06182521076244373,
+    "break_frequency": 0.06925958657014929,
+    "mood_score": 0.12372429296640007,
+    "hydration_glasses": 0.04432508243387968,
+    "meditation_minutes": 0.05215148768694648,
+    "social_interaction_hours": 0.03552715883682169
   }
 }

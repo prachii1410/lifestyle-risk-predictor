@@ -4,15 +4,19 @@ app.py
 Flask application for the Lifestyle Telemetry & Overthinking Risk Predictor.
 
 Routes:
-    GET  /                   → Landing page
-    GET  /analyze            → Analysis form
-    GET  /dashboard          → Dashboard page
-    GET  /result             → Result page (POST redirect)
-    POST /predict            → Form-based prediction
-    POST /api/predict        → JSON API prediction
-    GET  /api/model-performance → Model metrics JSON
-    GET  /api/sample-data    → Sample dataset rows
-    POST /api/regenerate-data → Regenerate synthetic dataset
+    GET  /                        → Landing page
+    GET  /analyze                 → Analysis form
+    GET  /dashboard               → Dashboard page
+    GET  /result                  → Result page (POST redirect)
+    POST /predict                 → Form-based prediction
+    POST /api/predict             → JSON API prediction  [API-key protected]
+    GET  /api/model-performance   → Model metrics JSON   [API-key protected]
+    GET  /api/sample-data         → Sample dataset rows  [API-key protected]
+    POST /api/regenerate-data     → Regenerate synthetic dataset
+    GET  /api/trend-data          → History trend JSON for charts
+    POST /api/trend-data          → Save a result entry to server-side history
+    GET  /export-pdf              → Export last result as PDF
+    POST /api/send-email          → Send result summary by email
 """
 
 import os
@@ -20,6 +24,8 @@ import sys
 import json
 import types
 import logging
+import functools
+from datetime import datetime
 
 # ---------------------------------------------------------------------------
 # Workaround: Application Control policies on some Windows machines block
@@ -35,7 +41,8 @@ import numpy as np
 import pandas as pd
 import joblib
 from flask import (
-    Flask, render_template, request, jsonify, redirect, url_for, session
+    Flask, render_template, request, jsonify, redirect, url_for, session,
+    make_response
 )
 
 # ── Path setup ─────────────────────────────────────────────────────────────────
@@ -67,8 +74,33 @@ SCALER_PATH  = os.path.join(MODEL_DIR, "scaler.pkl")
 METRICS_PATH = os.path.join(MODEL_DIR, "model_metrics.json")
 DATA_PATH    = os.path.join(DATA_DIR,  "lifestyle_data.csv")
 
+# ── Server-side trend history ──────────────────────────────────────────────────
+TREND_PATH   = os.path.join(DATA_DIR, "trend_history.json")
+
+# ── API Key ────────────────────────────────────────────────────────────────────
+# Set env var LIFESTYLE_API_KEY to protect /api/* endpoints.
+# If not set, API is open (dev mode).
+API_KEY = os.environ.get("LIFESTYLE_API_KEY", "")
+
 _model  = None
 _scaler = None
+
+
+# ── API Key auth decorator ─────────────────────────────────────────────────────
+def require_api_key(f):
+    """Decorator: enforce API key on JSON API endpoints when API_KEY is set."""
+    @functools.wraps(f)
+    def decorated(*args, **kwargs):
+        if API_KEY:  # Only enforce when a key is configured
+            key = (
+                request.headers.get("X-API-Key") or
+                request.args.get("api_key") or
+                (request.get_json(silent=True) or {}).get("api_key")
+            )
+            if key != API_KEY:
+                return jsonify({"error": "Unauthorized. Provide a valid API key via X-API-Key header or api_key param."}), 401
+        return f(*args, **kwargs)
+    return decorated
 
 
 def load_model():
@@ -157,6 +189,40 @@ def predict_risk(inputs: dict) -> dict:
     }
 
 
+# ── Trend history helpers ──────────────────────────────────────────────────────
+
+def load_trend_history() -> list:
+    """Load server-side trend history from JSON file."""
+    if not os.path.exists(TREND_PATH):
+        return []
+    try:
+        with open(TREND_PATH, "r", encoding="utf-8") as f:
+            return json.load(f)
+    except Exception:
+        return []
+
+
+def save_trend_history(history: list) -> None:
+    """Persist trend history to JSON file."""
+    os.makedirs(DATA_DIR, exist_ok=True)
+    with open(TREND_PATH, "w", encoding="utf-8") as f:
+        json.dump(history[-60:], f, indent=2)  # Keep last 60 entries
+
+
+def append_trend_entry(result_data: dict) -> None:
+    """Add a prediction result to the server-side trend history."""
+    history = load_trend_history()
+    entry = {
+        "ts":         datetime.utcnow().isoformat(),
+        "risk_score": result_data.get("risk_score"),
+        "risk_level": result_data.get("risk_level"),
+        "color":      result_data.get("color"),
+        "inputs":     result_data.get("inputs", {}),
+    }
+    history.append(entry)
+    save_trend_history(history)
+
+
 # ── Routes ─────────────────────────────────────────────────────────────────────
 
 @app.route("/")
@@ -200,12 +266,16 @@ def predict_form():
             "study_hours":               request.form.get("study_hours", 6),
             "break_frequency":           request.form.get("break_frequency", 8),
             "mood_score":                request.form.get("mood_score", 6),
+            "hydration_glasses":         request.form.get("hydration_glasses", 6),
+            "meditation_minutes":        request.form.get("meditation_minutes", 0),
+            "social_interaction_hours":  request.form.get("social_interaction_hours", 2),
         }
         result_data = predict_risk(form_data)
         if "error" in result_data:
             return render_template("index.html", error=result_data["error"]), 400
 
         session["last_result"] = result_data
+        append_trend_entry(result_data)
         return render_template("result.html", result=result_data)
 
     except Exception as e:
@@ -214,6 +284,7 @@ def predict_form():
 
 
 @app.route("/api/predict", methods=["POST"])
+@require_api_key
 def api_predict():
     """JSON API endpoint for prediction."""
     try:
@@ -225,8 +296,9 @@ def api_predict():
         if "error" in result_data:
             return jsonify(result_data), 400
 
-        # Save to session for dashboard
+        # Save to session and trend history
         session["last_result"] = result_data
+        append_trend_entry(result_data)
 
         return jsonify(result_data), 200
 
@@ -236,6 +308,7 @@ def api_predict():
 
 
 @app.route("/api/model-performance", methods=["GET"])
+@require_api_key
 def api_model_performance():
     """Return model evaluation metrics as JSON."""
     try:
@@ -251,6 +324,7 @@ def api_model_performance():
 
 
 @app.route("/api/sample-data", methods=["GET"])
+@require_api_key
 def api_sample_data():
     """Return sample rows from the dataset for the Data Explorer."""
     try:
@@ -325,6 +399,136 @@ def api_regenerate_data():
     except Exception as e:
         logger.exception("Regenerate data error")
         return jsonify({"error": str(e)}), 500
+
+
+# ── Feature 2: Trend History ───────────────────────────────────────────────────
+
+@app.route("/api/trend-data", methods=["GET"])
+def api_trend_data():
+    """Return server-side trend history for the line chart."""
+    try:
+        history = load_trend_history()
+        return jsonify({"history": history, "count": len(history)}), 200
+    except Exception as e:
+        logger.exception("Trend data error")
+        return jsonify({"error": str(e)}), 500
+
+
+@app.route("/api/trend-data", methods=["POST"])
+def api_trend_save():
+    """Manually save a result entry to server-side trend history."""
+    try:
+        data = request.get_json(force=True) or {}
+        if not data.get("risk_score"):
+            return jsonify({"error": "risk_score required"}), 400
+        append_trend_entry(data)
+        return jsonify({"message": "Saved to trend history."}), 200
+    except Exception as e:
+        logger.exception("Trend save error")
+        return jsonify({"error": str(e)}), 500
+
+
+# ── Feature 5: Export to PDF ───────────────────────────────────────────────────
+
+@app.route("/export-pdf")
+def export_pdf():
+    """Export the last result as a PDF using weasyprint."""
+    try:
+        import weasyprint
+    except ImportError:
+        return "WeasyPrint is not installed. Run: pip install weasyprint", 500
+
+    last_result = session.get("last_result", None)
+    if not last_result:
+        return redirect(url_for("index"))
+
+    try:
+        html_str = render_template("pdf_report.html", result=last_result,
+                                   generated_at=datetime.utcnow().strftime("%Y-%m-%d %H:%M UTC"))
+        pdf_bytes = weasyprint.HTML(string=html_str, base_url=request.host_url).write_pdf()
+        response = make_response(pdf_bytes)
+        response.headers["Content-Type"] = "application/pdf"
+        response.headers["Content-Disposition"] = "attachment; filename=lifestyle-risk-report.pdf"
+        return response
+    except Exception as e:
+        logger.exception("PDF export error")
+        return f"PDF generation failed: {e}", 500
+
+
+# ── Feature 6: Email Summary ───────────────────────────────────────────────────
+
+@app.route("/api/send-email", methods=["POST"])
+def api_send_email():
+    """Send a risk summary email using Flask-Mail / SMTP."""
+    try:
+        from flask_mail import Mail, Message
+    except ImportError:
+        return jsonify({"error": "Flask-Mail is not installed. Run: pip install Flask-Mail"}), 500
+
+    data = request.get_json(force=True) or {}
+    recipient = data.get("email", "").strip()
+    if not recipient or "@" not in recipient:
+        return jsonify({"error": "A valid email address is required."}), 400
+
+    result_data = data.get("result") or session.get("last_result")
+    if not result_data:
+        return jsonify({"error": "No result data available to send."}), 400
+
+    # Mail config — read from environment variables
+    app.config.setdefault("MAIL_SERVER",   os.environ.get("MAIL_SERVER",   "smtp.gmail.com"))
+    app.config.setdefault("MAIL_PORT",     int(os.environ.get("MAIL_PORT", "587")))
+    app.config.setdefault("MAIL_USE_TLS",  True)
+    app.config.setdefault("MAIL_USERNAME", os.environ.get("MAIL_USERNAME", ""))
+    app.config.setdefault("MAIL_PASSWORD", os.environ.get("MAIL_PASSWORD", ""))
+    app.config.setdefault("MAIL_DEFAULT_SENDER", os.environ.get("MAIL_USERNAME", "noreply@lifestyleai.com"))
+
+    if not app.config["MAIL_USERNAME"]:
+        return jsonify({"error": "Email not configured. Set MAIL_USERNAME and MAIL_PASSWORD environment variables."}), 503
+
+    try:
+        mail = Mail(app)
+        score      = result_data.get("risk_score", "N/A")
+        level      = result_data.get("risk_level", "N/A")
+        color      = result_data.get("color", "#3b82d4")
+        desc       = result_data.get("description", "")
+        ts         = datetime.utcnow().strftime("%Y-%m-%d %H:%M UTC")
+
+        insights_html = "".join(
+            f"<li><strong>{i.get('title','')}</strong>: {i.get('message','')}</li>"
+            for i in (result_data.get("insights") or [])[:5]
+        )
+
+        html_body = f"""
+        <div style="font-family:sans-serif;max-width:600px;margin:auto;padding:24px;border:1px solid #e5e7eb;border-radius:8px;">
+          <h2 style="color:#1f2328;">🧠 Your Lifestyle Risk Summary</h2>
+          <p style="color:#57606a;font-size:0.9rem;">Generated on {ts}</p>
+          <div style="text-align:center;padding:24px;background:#f7f8fa;border-radius:8px;margin:20px 0;">
+            <div style="font-size:3rem;font-weight:900;color:{color};">{score}</div>
+            <div style="font-size:1rem;font-weight:700;color:{color};">{level}</div>
+            <p style="font-size:0.9rem;color:#57606a;margin-top:8px;">{desc}</p>
+          </div>
+          <h3 style="color:#1f2328;">💡 Lifestyle Insights</h3>
+          <ul style="color:#57606a;line-height:1.8;">{insights_html}</ul>
+          <hr style="border:none;border-top:1px solid #e5e7eb;margin:20px 0;">
+          <p style="font-size:0.75rem;color:#57606a;">
+            This is an educational wellness analytics tool. Not a medical diagnostic tool.
+            Please consult a qualified healthcare professional for personal health concerns.
+          </p>
+        </div>
+        """
+
+        msg = Message(
+            subject=f"Your Lifestyle Risk Report — {level} ({score}/100)",
+            recipients=[recipient],
+            html=html_body,
+        )
+        mail.send(msg)
+        logger.info(f"Email sent to {recipient}")
+        return jsonify({"message": f"Summary email sent to {recipient}."}), 200
+
+    except Exception as e:
+        logger.exception("Email send error")
+        return jsonify({"error": f"Failed to send email: {str(e)}"}), 500
 
 
 # ── Entry point ────────────────────────────────────────────────────────────────

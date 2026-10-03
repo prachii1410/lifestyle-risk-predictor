@@ -209,6 +209,18 @@
 
     </div><!-- /dashboard-grid -->
 
+    <!-- ── Trend Chart (Feature 2) ──────────────────────────────────────── -->
+    <div class="dashboard-card" style="margin-top:28px;">
+      <h3><i class="fas fa-chart-line"></i> Risk Score Trend Over Time</h3>
+      <div id="trendChartEmpty" style="display:none;text-align:center;padding:32px;color:var(--text-muted);font-size:0.9rem;">
+        <i class="fas fa-chart-line fa-2x" style="margin-bottom:8px;opacity:0.4;display:block;"></i>
+        No trend data yet. Run more analyses to see your risk score over time.
+      </div>
+      <div class="chart-wrapper" style="height:260px;" id="trendChartWrapper">
+        <canvas id="trendChart" aria-label="Line chart of risk score over time"></canvas>
+      </div>
+    </div>
+
     {% else %}
     <!-- No data state -->
     <div class="dashboard-card" style="text-align:center;padding:72px 24px;border:1px solid var(--border);border-radius:var(--radius-lg);">

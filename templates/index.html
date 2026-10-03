@@ -62,7 +62,7 @@
     </div>
     <div class="hero-stats">
       <div class="stat-item">
-        <span class="stat-number">8</span>
+        <span class="stat-number">11</span>
         <span class="stat-label">Lifestyle Factors</span>
       </div>
       <div class="stat-item">
@@ -232,6 +232,42 @@
               min="1" max="10" step="1" value="6"
               class="slider" aria-label="Daily mood score 1 to 10">
             <div class="slider-labels"><span>1 (Low)</span><span>10 (Great)</span></div>
+          </div>
+
+          <!-- Hydration -->
+          <div class="slider-group">
+            <label for="hydration_glasses">
+              <i class="fas fa-tint"></i> Hydration
+              <span class="slider-value" id="hydration_val">6</span>
+            </label>
+            <input type="range" id="hydration_glasses" name="hydration_glasses"
+              min="0" max="15" step="1" value="6"
+              class="slider" aria-label="Glasses of water per day">
+            <div class="slider-labels"><span>0 glasses</span><span>15 glasses</span></div>
+          </div>
+
+          <!-- Meditation -->
+          <div class="slider-group">
+            <label for="meditation_minutes">
+              <i class="fas fa-spa"></i> Meditation
+              <span class="slider-value" id="meditation_val">0</span>
+            </label>
+            <input type="range" id="meditation_minutes" name="meditation_minutes"
+              min="0" max="120" step="5" value="0"
+              class="slider" aria-label="Meditation minutes per day">
+            <div class="slider-labels"><span>0 min</span><span>120 min</span></div>
+          </div>
+
+          <!-- Social Interaction -->
+          <div class="slider-group">
+            <label for="social_interaction_hours">
+              <i class="fas fa-users"></i> Social Interaction
+              <span class="slider-value" id="social_val">2.0</span>
+            </label>
+            <input type="range" id="social_interaction_hours" name="social_interaction_hours"
+              min="0" max="12" step="0.5" value="2.0"
+              class="slider" aria-label="Social interaction hours per day">
+            <div class="slider-labels"><span>0h</span><span>12h</span></div>
           </div>
 
         </div><!-- /sliders-grid -->
