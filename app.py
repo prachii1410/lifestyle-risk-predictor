@@ -432,24 +432,166 @@ def api_trend_save():
 
 @app.route("/export-pdf")
 def export_pdf():
-    """Export the last result as a PDF using weasyprint."""
+    """Export the last result as a PDF using reportlab."""
     try:
-        import weasyprint
+        from reportlab.lib.pagesizes import A4
+        from reportlab.lib import colors
+        from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
+        from reportlab.lib.units import cm
+        from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle, HRFlowable
+        from reportlab.lib.enums import TA_CENTER, TA_LEFT
+        import io
     except ImportError:
-        return "WeasyPrint is not installed. Run: pip install weasyprint", 500
+        return "reportlab is not installed. Run: pip install reportlab", 500
 
     last_result = session.get("last_result", None)
     if not last_result:
         return redirect(url_for("index"))
 
     try:
-        html_str = render_template("pdf_report.html", result=last_result,
-                                   generated_at=datetime.utcnow().strftime("%Y-%m-%d %H:%M UTC"))
-        pdf_bytes = weasyprint.HTML(string=html_str, base_url=request.host_url).write_pdf()
-        response = make_response(pdf_bytes)
+        buf = io.BytesIO()
+        doc = SimpleDocTemplate(buf, pagesize=A4,
+                                rightMargin=2*cm, leftMargin=2*cm,
+                                topMargin=2*cm, bottomMargin=2*cm)
+        styles = getSampleStyleSheet()
+        story  = []
+
+        # ── Title ──────────────────────────────────────────────────────────────
+        title_style = ParagraphStyle("title", parent=styles["Title"],
+                                     fontSize=18, textColor=colors.HexColor("#6366f1"),
+                                     spaceAfter=4)
+        story.append(Paragraph("🧠 Lifestyle Telemetry Risk Report", title_style))
+        story.append(Paragraph(
+            f"Generated: {datetime.utcnow().strftime('%Y-%m-%d %H:%M UTC')} &nbsp;|&nbsp; Educational tool — not medical advice.",
+            ParagraphStyle("sub", parent=styles["Normal"], fontSize=9,
+                           textColor=colors.HexColor("#57606a"), spaceAfter=16)))
+        story.append(HRFlowable(width="100%", thickness=2, color=colors.HexColor("#6366f1"), spaceAfter=16))
+
+        # ── Score box ──────────────────────────────────────────────────────────
+        score      = last_result.get("risk_score", "N/A")
+        level      = last_result.get("risk_level", "N/A")
+        color_hex  = last_result.get("color", "#6366f1")
+        desc       = last_result.get("description", "")
+        score_color = colors.HexColor(color_hex)
+
+        score_data = [[
+            Paragraph(f'<font size="28" color="{color_hex}"><b>{score}</b></font>', styles["Normal"]),
+            Paragraph(f'<font size="14" color="{color_hex}"><b>{level}</b></font><br/>'
+                      f'<font size="9" color="#57606a">{desc}</font>', styles["Normal"]),
+        ]]
+        score_table = Table(score_data, colWidths=[4*cm, 13*cm])
+        score_table.setStyle(TableStyle([
+            ("BOX",        (0,0), (-1,-1), 1.5, score_color),
+            ("BACKGROUND", (0,0), (-1,-1), colors.HexColor("#f7f8fa")),
+            ("VALIGN",     (0,0), (-1,-1), "MIDDLE"),
+            ("ALIGN",      (0,0), (0,0),   "CENTER"),
+            ("LEFTPADDING",(0,0),(-1,-1),  12),
+            ("RIGHTPADDING",(0,0),(-1,-1), 12),
+            ("TOPPADDING", (0,0),(-1,-1),  12),
+            ("BOTTOMPADDING",(0,0),(-1,-1),12),
+            ("ROUNDEDCORNERS", [6]),
+        ]))
+        story.append(score_table)
+        story.append(Spacer(1, 18))
+
+        # ── Input Summary ──────────────────────────────────────────────────────
+        story.append(Paragraph("Your Lifestyle Inputs", ParagraphStyle(
+            "sec", parent=styles["Heading2"], fontSize=12,
+            textColor=colors.HexColor("#1f2328"), spaceBefore=4, spaceAfter=8)))
+
+        labels = {
+            "sleep_hours": "Sleep (hrs)", "caffeine_mg": "Caffeine (mg)",
+            "screen_time_hours": "Screen (hrs)", "workload_level": "Workload /10",
+            "physical_activity_minutes": "Activity (min)", "study_hours": "Study (hrs)",
+            "break_frequency": "Breaks", "mood_score": "Mood /10",
+            "hydration_glasses": "Hydration (gl)", "meditation_minutes": "Meditation (min)",
+            "social_interaction_hours": "Social (hrs)",
+        }
+        inputs = last_result.get("inputs", {})
+        input_rows = []
+        row = []
+        for i, (k, v) in enumerate(inputs.items()):
+            cell = Paragraph(
+                f'<font size="13" color="#6366f1"><b>{round(v,1)}</b></font><br/>'
+                f'<font size="8" color="#57606a">{labels.get(k, k)}</font>',
+                ParagraphStyle("c", parent=styles["Normal"], alignment=TA_CENTER))
+            row.append(cell)
+            if len(row) == 4 or i == len(inputs) - 1:
+                while len(row) < 4:
+                    row.append(Paragraph("", styles["Normal"]))
+                input_rows.append(row)
+                row = []
+
+        inp_table = Table(input_rows, colWidths=[4.2*cm]*4)
+        inp_table.setStyle(TableStyle([
+            ("BOX",           (0,0), (-1,-1), 0.5, colors.HexColor("#e5e7eb")),
+            ("INNERGRID",     (0,0), (-1,-1), 0.5, colors.HexColor("#e5e7eb")),
+            ("BACKGROUND",    (0,0), (-1,-1), colors.HexColor("#f7f8fa")),
+            ("ALIGN",         (0,0), (-1,-1), "CENTER"),
+            ("VALIGN",        (0,0), (-1,-1), "MIDDLE"),
+            ("TOPPADDING",    (0,0), (-1,-1), 8),
+            ("BOTTOMPADDING", (0,0), (-1,-1), 8),
+        ]))
+        story.append(inp_table)
+        story.append(Spacer(1, 18))
+
+        # ── Factor Breakdown ───────────────────────────────────────────────────
+        story.append(Paragraph("Risk Factor Breakdown", ParagraphStyle(
+            "sec", parent=styles["Heading2"], fontSize=12,
+            textColor=colors.HexColor("#1f2328"), spaceBefore=4, spaceAfter=8)))
+
+        factors = last_result.get("factors", {})
+        for name, pct in factors.items():
+            bar_color = "#22c55e" if pct < 35 else ("#f59e0b" if pct < 65 else "#ef4444")
+            factor_row = [
+                Paragraph(f'<font size="10">{name}</font>',
+                          ParagraphStyle("fl", parent=styles["Normal"])),
+                Table([[""]], colWidths=[pct * 0.13 * cm if pct > 0 else 0.1*cm],
+                      rowHeights=[10]),
+                Paragraph(f'<font size="9" color="#57606a"><b>{pct}%</b></font>',
+                          ParagraphStyle("fp", parent=styles["Normal"], alignment=TA_CENTER)),
+            ]
+            ft = Table([factor_row], colWidths=[5*cm, 10*cm, 1.5*cm])
+            ft.setStyle(TableStyle([
+                ("VALIGN",        (0,0), (-1,-1), "MIDDLE"),
+                ("BACKGROUND",    (1,0), (1,0),   colors.HexColor(bar_color)),
+                ("ROUNDEDCORNERS",[4]),
+                ("TOPPADDING",    (0,0), (-1,-1), 3),
+                ("BOTTOMPADDING", (0,0), (-1,-1), 3),
+            ]))
+            story.append(ft)
+            story.append(Spacer(1, 4))
+
+        story.append(Spacer(1, 14))
+
+        # ── Insights ───────────────────────────────────────────────────────────
+        story.append(Paragraph("Personalized Insights", ParagraphStyle(
+            "sec", parent=styles["Heading2"], fontSize=12,
+            textColor=colors.HexColor("#1f2328"), spaceBefore=4, spaceAfter=8)))
+
+        for ins in (last_result.get("insights") or []):
+            story.append(Paragraph(
+                f'{ins.get("icon","")} <b>{ins.get("title","")}</b>: '
+                f'<font color="#57606a">{ins.get("message","")}</font>',
+                ParagraphStyle("ins", parent=styles["Normal"], fontSize=9,
+                               spaceAfter=6, leftIndent=8)))
+
+        story.append(Spacer(1, 16))
+        story.append(HRFlowable(width="100%", thickness=0.5,
+                                color=colors.HexColor("#e5e7eb"), spaceAfter=10))
+        story.append(Paragraph(
+            "⚠️ This report is from an educational ML model trained on synthetic data. "
+            "Not a medical diagnostic tool. Consult a qualified healthcare professional for health concerns.",
+            ParagraphStyle("disc", parent=styles["Normal"], fontSize=8,
+                           textColor=colors.HexColor("#57606a"))))
+
+        doc.build(story)
+        buf.seek(0)
+        response = make_response(buf.read())
         response.headers["Content-Type"] = "application/pdf"
         response.headers["Content-Disposition"] = "attachment; filename=lifestyle-risk-report.pdf"
         return response
+
     except Exception as e:
         logger.exception("PDF export error")
         return f"PDF generation failed: {e}", 500
